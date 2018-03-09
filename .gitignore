@@ -1,1 +1,10 @@
-credentials.sh
+*.rst
+certifi*/
+chardet*/
+elasticsearch*/
+idna*/
+requests*/
+requests_aws4auth*/
+serverless-output.yml
+urllib3*/
+NOTICE
