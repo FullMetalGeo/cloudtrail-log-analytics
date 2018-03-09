@@ -31,4 +31,4 @@ aws --profile $PROFILE cloudformation deploy \
   --capabilities CAPABILITY_IAM
 
 echo "Stack $STACK_NAME has been created, but you still need to enter the ElasticSearch password"
-echo 'Create a paramter at $CONFIG_PATH/ES_PASS with the password value'
+echo 'Create a parameter in Parameter Store with path $CONFIG_PATH/ES_PASS with the password value'
