@@ -1,0 +1,32 @@
+{
+    "Description": "[Platform] CloudTrail",
+    "Parameters": {
+        "LogBucket": {
+            "Default": "cloudtrail-elasticsearch-s3bucket-yvjvmo9n5z5r\t",
+            "Description": "The S3 bucket to write logs to",
+            "Type": "String"
+        },
+        "SnsTopic": {
+            "Default": "arn:aws:sns:us-east-1:514107046317:cloudtrail-elasticsearch-SNSTopic-1M25KZBQ31OBB",
+            "Description": "The arn of the SNS topic to notify for log delivery",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "CloudTrail": {
+            "Properties": {
+                "IncludeGlobalServiceEvents": "true",
+                "IsLogging": "true",
+                "IsMultiRegionTrail": "true",
+                "S3BucketName": {
+                    "Ref": "LogBucket"
+                },
+                "SnsTopicName": {
+                    "Ref": "SnsTopic"
+                },
+                "TrailName": "CloudTrail"
+            },
+            "Type": "AWS::CloudTrail::Trail"
+        }
+    }
+}
