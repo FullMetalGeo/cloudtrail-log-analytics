@@ -1,8 +1,30 @@
+#!/bin/bash
+set -e
+
+# Get options
+while getopts "b:s:p:" opt; do
+  case $opt in
+    b )
+      S3_BUCKET=$OPTARG
+      echo "S3 Bucket: $OPTARG" >&2
+      ;;
+    s )
+      STACK_NAME=$OPTARG
+      echo "Stack Name: $OPTARG" >&2
+      ;;
+    p ) 
+      PROFILE=$OPTARG
+      echo "Profile: $OPTARG" >&2
+      ;;
+    \? ) echo "Usage: deploy [-b] bucket_name [-s] stack_name [-p] profile"
+      ;;
+  esac
+done
 
 # Set up Variables
-PROFILE="gsoyka-sandbox"
-S3_BUCKET="grant-cf-test"
-STACK_NAME="cloudtrail-elasticsearch"
+if [[ -z $PROFILE ]]; then PROFILE="default"; fi
+if [[ -z $STACK_NAME ]]; then STACK_NAME="cloudtrail-elasticsearch"; fi
+if [[ -z $S3_BUCKET ]]; then echo "ERROR: You must provide a bucket name to store the code bundle" && exit 1; fi
 
 # Somewhat hacky fix for mac and pip
 case "$(uname -s)" in

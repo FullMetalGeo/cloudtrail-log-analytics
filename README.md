@@ -1,29 +1,39 @@
 # CloudTrail Log Analytics using AWS Lambda and Amazon ElasticSearch Service
 This AWS Serverless Application will help you analyze AWS CloudTrail Logs using 
-Amazon Elasticsearch Service. The application creates CloudTrail trail, sets
-the log delivery to an s3 bucket that it creates and configures SNS delivery 
-whenever the CloudTrail log file has been written to s3. The app also
-creates an Amazon Elasticsearch Domain and creates an Amazon Lambda Function which
-gets triggered by the SNS message, get the s3 file location, read the contents from the s3
-file and write the data to Elasticsearch for analytics.
+Amazon Elasticsearch Service. The application creates:
+* An S3 bucket to hold logs from CloudTrail
+* An SNS topic to receive messages from CloudTrail
+* An SNS subscription to deliver messages to Lambda
+* A Lambda function to receive the message, process the data, and push it to Elasticsearch
 
-This is the architecture of the CloudTrail Log Analytics Serverless Application
+As originally designed, the Lambda function pushed data to an AWS Elasticsearch cluster.
+It has been redesigned to push to the Elastic Cloud service instead, which offers features
+such as the X-Pack.  When and if AWS updates their offering to includes such features,
+the function could be returned to using the AWS option. 
 
-# ![Architecture](cloudtrail-log-analytics.png)
-
-The remainder of document explains how to prepare the Serverless Application and 
-deploy it via AWS CloudFormation. 
+This repo also includes a template for enabling CloudTrail to publish logs to the 
+pusher function.  Simply create a stack using the `templates/cloudtrail.json` file.
+You will need to fill in the S3 Bucket name that was created, as well as the ARN for
+the SNS topic.
 
 ## Prerequisites
-- [python 2.7](https://www.python.org/download/releases/2.7/)
+- [python 3.6](https://www.python.org/download/releases/3.6/)
 - [pip](https://bootstrap.pypa.io/get-pip.py)
 
-## Install the required python packages for the AWS Lambda function 
+## Quick Deploy
+Simply run the `deploy.sh` script, providing the profile, stack-name, and bucket to store packaged code: 
+```bash
+deploy.sh -p my_profile -s my-stack-name -b my-storage-bucket
+```
+
+## Step by Step Manual Deploy
+
+### Install the required python packages for the AWS Lambda function 
 ```bash
 $ python -m pip install -r requirements.txt -t ./
 ```
 
-## Packing Artifacts
+### Packing Artifacts
 Before you can deploy a SAM template, you should first upload your Lambda 
 function code zip. Set the `CodeUri` properties to the S3 URI of uploaded files. You
 can choose to do this manually or use `aws cloudformation package` [CLI command](http://docs.aws.amazon.com/cli/latest/reference/cloudformation/package.html) to automate the task of uploading local artifacts to S3 bucket. The command returns a copy of your template, replacing references to local artifacts with S3 location where the command uploaded your artifacts. 
@@ -59,7 +69,7 @@ Function:
         ...
 ```
 
-## Deploying to AWS CloudFormation
+### Deploying to AWS CloudFormation
 SAM template is deployed to AWS CloudFormation by [creating a changeset](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-changesets-create.html)
 using the SAM template followed by [executing the changeset](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-changesets-execute.html). 
 Think of a ChangeSet as a diff between your current stack template and the new template that you are deploying. After you create a ChangeSet, you have the opportunity to examine the diff before executing it. Both the AWS Console and AWS CLI provide commands to create and execute a changeset. 
@@ -75,10 +85,3 @@ $ aws cloudformation deploy \
 
 Refer to the [documentation](http://docs.aws.amazon.com/cli/latest/reference/cloudformation/deploy/index.html) for more details.
 
-## Caveats
-<span style="color:red">**Please read this part**</span>
-
-The Amazon Elasticsearch Domain that the Serverless Application creates has the following access polices:
-- ```es:ESHttp*``` access to everyone to the domain
-
-I strongly recommend reading about Elasticsearch Service Access Policies using the below [documentation](http://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-createupdatedomains.html#es-createdomain-configure-access-policies) and modify the Access policy of the Elasticsearch domain to give full access to the Lambda's IAM role or give full es:ESHttp* access to your public IPs to the Elasticsearch Domain
