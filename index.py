@@ -45,7 +45,31 @@ def get_config():
     #logger.info('Config ' + json.dumps(config, indent=2))
     
     return config
+
+def get_cloudtrail_log(s3Bucket, s3ObjectKey):
+    response = s3.get_object(Bucket=s3Bucket, Key=s3ObjectKey)
     
+    # Get compressed file object
+    file = io.BytesIO(response['Body'].read())
+    
+    # Read compressed file
+    content = gzip.GzipFile(fileobj=file).read()
+
+    return json.loads(content)
+
+def get_s3_files(message):
+    # Define s3 bucket name
+    s3Bucket = message['s3Bucket']
+    logger.info('S3 Bucket: ' + s3Bucket)
+    
+    # Build list of object keys 
+    object_keys = []
+    for s3ObjectKey in message['s3ObjectKey']:
+        object_keys.append(urllib.parse.unquote(s3ObjectKey))
+        logger.info('S3 Object Key: ' + s3ObjectKey)
+    
+    return s3Bucket, object_keys
+
 def handler(event, context):
     # Get config from SSM parameter store
     config = get_config()
@@ -62,33 +86,22 @@ def handler(event, context):
     # Log Incoming Message
     logger.info('Event: ' + json.dumps(event, indent=2))
     message = json.loads(event['Records'][0]['Sns']['Message'])
-
-    # Define s3 bucket and object
-    s3Bucket = message['s3Bucket']
-    s3ObjectKey = urllib.parse.unquote(message['s3ObjectKey'][0])
     
-    # Log bucket and object key data
-    logger.info('S3 Bucket: ' + s3Bucket)
-    logger.info('S3 Object Key: ' + s3ObjectKey)
+    # Get bucket and list of objects from message
+    s3Bucket, object_keys = get_s3_files(message)
 
-    try:
-        response = s3.get_object(Bucket=s3Bucket, Key=s3ObjectKey)
-        
-        # Get compressed file object
-        file = io.BytesIO(response['Body'].read())
-        
-        # Read compressed file
-        content = gzip.GzipFile(fileobj=file).read()
-
-        # Process lines in file
-        for record in json.loads(content)['Records']:
-            recordJson = json.dumps(record)
-            logger.info(recordJson)
-            indexName = config['ES_INDEX'] + '-' + datetime.datetime.now().strftime("%Y-%m-%d")
-            res = es.index(index=indexName, doc_type='record', id=record['eventID'], body=recordJson)
-            logger.info(res)
-        return True
-    except Exception as e:
-        logger.error('Something went wrong: ' + str(e))
-        traceback.print_exc()
-        return False
+    # Load each object logfile into ElasticSearch
+    for s3ObjectKey in object_keys:
+        try:
+            # Process lines in file
+            for record in  get_cloudtrail_log(s3Bucket, s3ObjectKey)['Records']:
+                recordJson = json.dumps(record)
+                logger.info(recordJson)
+                indexName = config['ES_INDEX'] + '-' + datetime.datetime.now().strftime("%Y-%m-%d")
+                res = es.index(index=indexName, doc_type='record', id=record['eventID'], body=recordJson)
+                logger.info(res)
+            return True
+        except Exception as e:
+            logger.error('Something went wrong: ' + str(e))
+            traceback.print_exc()
+            return False
