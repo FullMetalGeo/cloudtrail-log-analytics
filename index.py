@@ -30,7 +30,7 @@ def get_config():
     
     # Get parameters on our path from SSM
     response = client.get_parameters_by_path(
-        Path = '/dev/CloudTrailPushFunction/',
+        Path = os.environ['CONFIG_PATH'],
         Recursive = False,
         WithDecryption = True
     )
